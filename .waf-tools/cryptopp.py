@@ -23,11 +23,11 @@ import sys
 import re
 from waflib import Utils,Logs,Errors
 from waflib.Configure import conf
-CRYPTOPP_DIR = ['/usr', '/usr/local', '/opt/local', '/sw']
+CRYPTOPP_DIR = ['/usr', '/usr/local', '/opt/local', '/sw', '/usr/local/ndn', '/opt/ndn']
 CRYPTOPP_VERSION_FILE = 'config.h'
 
 CRYPTOPP_CHECK_FRAGMENT = '''
-#include "../../src/security/v1/cryptopp.hpp"
+#include "../../src/ndnSIM/ndn-cxx/src/security/cryptopp.hpp"
 #include <iostream>
 
 int
@@ -40,6 +40,7 @@ main()
   StringSource(buffer, true, new HashFilter(hash, new FileSink(std::cout)));
   StringSource(reinterpret_cast<const uint8_t*>(buffer.c_str()), buffer.size(),
                true, new HashFilter(hash, new FileSink(std::cout)));
+  return 0;
 }
 '''
 
@@ -87,14 +88,12 @@ def check_cryptopp(self, *k, **kw):
 
     try:
         txt = file.read()
-        re_version = re.compile('^#define\\s+CRYPTOPP_VERSION\\s+([0-9]+)', re.M)
+        re_version = re.compile('^#define\\s+CRYPTOPP_VERSION\\s+(.*)', re.M)
         match = re_version.search(txt)
 
         if match:
             self.env.CRYPTOPP_VERSION = match.group(1)
-            v = int(self.env.CRYPTOPP_VERSION)
-            (major, minor, patch) = (int(v / 100), int(v % 100 / 10), int(v % 10))
-            self.end_msg("%d.%d.%d" % (major, minor, patch))
+            self.end_msg(self.env.CRYPTOPP_VERSION)
         else:
             self.fatal('CryptoPP files are present, but are not recognizable')
     except:

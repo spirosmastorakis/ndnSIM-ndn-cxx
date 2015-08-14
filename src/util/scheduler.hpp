@@ -25,101 +25,18 @@
 #include "../common.hpp"
 #include "monotonic_deadline_timer.hpp"
 
+#include "ns3/simulator.h"
+
 #include <set>
 
 namespace ndn {
 namespace util {
 namespace scheduler {
 
-/**
- * \brief Function to be invoked when a scheduled event expires
+/** \class EventId
+ *  \brief Opaque type (shared_ptr) representing ID of a scheduled event
  */
-typedef function<void()> EventCallback;
-
-/**
- * \brief Stores internal information about a scheduled event
- */
-class EventInfo;
-
-/**
- * \brief Identifies a scheduled event
- */
-class EventId
-{
-public:
-  /**
-   * \brief Constructs an empty EventId
-   * \note EventId is implicitly convertible from nullptr.
-   */
-  EventId(std::nullptr_t = nullptr)
-  {
-  }
-
-  /**
-   * \retval true The event is valid.
-   * \retval false This EventId is empty, or the event is expired or cancelled.
-   */
-  explicit
-  operator bool() const
-  {
-    return !this->operator!();
-  }
-
-  /**
-   * \retval true This EventId is empty, or the event is expired or cancelled.
-   * \retval false The event is valid.
-   */
-  bool
-  operator!() const;
-
-  /**
-   * \return whether this and other refer to the same event, or are both empty/expired/cancelled
-   */
-  bool
-  operator==(const EventId& other) const;
-
-  bool
-  operator!=(const EventId& other) const
-  {
-    return !this->operator==(other);
-  }
-
-  /**
-   * \brief clear this EventId
-   * \note This does not cancel the event.
-   * \post !(*this)
-   */
-  void
-  reset()
-  {
-    m_info.reset();
-  }
-
-private:
-  explicit
-  EventId(const weak_ptr<EventInfo>& info)
-    : m_info(info)
-  {
-  }
-
-private:
-  weak_ptr<EventInfo> m_info;
-
-  friend class Scheduler;
-  friend std::ostream& operator<<(std::ostream& os, const EventId& eventId);
-};
-
-std::ostream&
-operator<<(std::ostream& os, const EventId& eventId);
-
-class EventQueueCompare
-{
-public:
-  bool
-  operator()(const shared_ptr<EventInfo>& a, const shared_ptr<EventInfo>& b) const;
-};
-
-typedef std::multiset<shared_ptr<EventInfo>, EventQueueCompare> EventQueue;
+typedef std::shared_ptr<ns3::EventId> EventId;
 
 /**
  * \brief Generic scheduler
@@ -134,6 +51,8 @@ public:
 
   explicit
   Scheduler(boost::asio::io_service& ioService);
+
+  ~Scheduler();
 
   /**
    * \brief Schedule a one-time event after the specified delay
@@ -155,25 +74,36 @@ public:
   cancelAllEvents();
 
 private:
-  /**
-   * \brief Schedule the next event on the deadline timer
-   */
-  void
-  scheduleNext();
+  struct EventInfo
+  {
+    EventInfo(const time::nanoseconds& after, const Event& event);
 
-  /**
-   * \brief Execute expired events
-   * \note If an event callback throws, the exception is propagated to the thread running the
-   *       io_service. In case there are other expired events, they will be processed in the next
-   *       invocation of this method.
-   */
-  void
-  executeEvent(const boost::system::error_code& code);
+    EventInfo(const time::steady_clock::TimePoint& when, const EventInfo& previousEvent);
 
-private:
-  monotonic_deadline_timer m_deadlineTimer;
-  EventQueue m_queue;
-  bool m_isEventExecuting;
+    bool
+    operator <=(const EventInfo& other) const
+    {
+      return this->m_scheduledTime <= other.m_scheduledTime;
+    }
+
+    bool
+    operator <(const EventInfo& other) const
+    {
+      return this->m_scheduledTime < other.m_scheduledTime;
+    }
+
+    time::nanoseconds
+    expiresFromNow() const;
+
+    time::steady_clock::TimePoint m_scheduledTime;
+    Event m_event;
+    mutable EventId m_eventId;
+  };
+
+  typedef std::multiset<EventId> EventQueue;
+
+  EventQueue m_events;
+  EventQueue::iterator m_scheduledEvent;
 };
 
 } // namespace scheduler

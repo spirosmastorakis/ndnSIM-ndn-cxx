@@ -74,7 +74,6 @@ protected:
 
   time::seconds m_defaultTtl;
   Cache m_cache;
-  boost::asio::io_service& m_io;
   Scheduler m_scheduler;
 };
 

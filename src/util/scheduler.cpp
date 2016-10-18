@@ -88,11 +88,14 @@ Scheduler::cancelEvent(const EventId& eventId)
 void
 Scheduler::cancelAllEvents()
 {
-  for (auto i = m_events.begin(); i != m_events.end(); i++) {
+  for (auto i = m_events.begin(); i != m_events.end(); ) {
+    auto next = i;
+    ++next; // ns3::Simulator::Remove can call cancelEvent
     if ((*i) != nullptr) {
       ns3::Simulator::Remove((**i));
       const_cast<EventId&>(*i).reset();
     }
+    i = next;
   }
   m_events.clear();
 }

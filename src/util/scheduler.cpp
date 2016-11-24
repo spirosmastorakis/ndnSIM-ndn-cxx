@@ -44,31 +44,6 @@ namespace ndn {
 namespace util {
 namespace scheduler {
 
-bool
-EventId::operator!() const
-{
-  return m_info.expired() || m_info.lock()->isExpired;
-}
-
-bool
-EventId::operator==(const EventId& other) const
-{
-  return (!(*this) && !other) ||
-         !(m_info.owner_before(other.m_info) || other.m_info.owner_before(m_info));
-}
-
-std::ostream&
-operator<<(std::ostream& os, const EventId& eventId)
-{
-  return os << eventId.m_info.lock();
-}
-
-bool
-EventQueueCompare::operator()(const shared_ptr<EventInfo>& a, const shared_ptr<EventInfo>& b) const
-{
-  return a->expireTime < b->expireTime;
-}
-
 Scheduler::Scheduler(boost::asio::io_service& ioService)
   : m_scheduledEvent(m_events.end())
 {

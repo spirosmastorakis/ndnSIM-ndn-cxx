@@ -47,7 +47,7 @@ public:
   /**
    * \deprecated use EventCallback
    */
-  typedef EventCallback Event;
+  typedef function<void()> Event;
 
   explicit
   Scheduler(boost::asio::io_service& ioService);
@@ -59,7 +59,7 @@ public:
    * \return EventId that can be used to cancel the scheduled event
    */
   EventId
-  scheduleEvent(const time::nanoseconds& after, const EventCallback& callback);
+  scheduleEvent(const time::nanoseconds& after, const Event& event);
 
   /**
    * \brief Cancel a scheduled event
